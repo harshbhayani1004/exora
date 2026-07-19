@@ -7,6 +7,7 @@
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
 
 # Environment variables (set these in Netlify dashboard)
 # NEXT_PUBLIC_SUPABASE_URL = your_supabase_url
