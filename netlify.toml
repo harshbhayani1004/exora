@@ -1,0 +1,15 @@
+# Netlify configuration for Next.js deployment
+
+[build]
+  command = "npm run build"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# Environment variables (set these in Netlify dashboard)
+# NEXT_PUBLIC_SUPABASE_URL = your_supabase_url
+# NEXT_PUBLIC_SUPABASE_ANON_KEY = your_supabase_anon_key
