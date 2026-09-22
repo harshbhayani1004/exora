@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Instagram, Mail, MapPin, Phone } from "lucide-react";
+import { Instagram, Mail, MapPin, Phone } from "lucide-react";
+import NewsletterForm from "./NewsletterForm";
 
 const shopLinks = [
   { label: "All blooms", href: "/collection" },
@@ -46,22 +47,7 @@ export default function Footer() {
               New blooms, studio stories, and thoughtful gifting ideas—sent
               occasionally and always with care.
             </p>
-            <form className="mt-6 flex items-center border-b border-white/35 pb-2">
-              <label htmlFor="newsletter-email" className="sr-only">Email address</label>
-              <input
-                id="newsletter-email"
-                type="email"
-                placeholder="Your email address"
-                className="min-w-0 flex-1 bg-transparent py-3 text-sm text-white outline-none placeholder:text-white/35"
-              />
-              <button
-                type="button"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-butter text-dark transition-transform hover:-translate-y-1"
-                aria-label="Join newsletter"
-              >
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </form>
+            <NewsletterForm />
           </div>
         </div>
 

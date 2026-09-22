@@ -27,7 +27,7 @@ function ProductCard({
 
   return (
     <div className="group">
-      <Link href={`/products/${product.slug}`}>
+      <Link href={`/collection/${product.slug}`}>
         <div className="relative aspect-3/4 overflow-hidden rounded-lg bg-gray-100">
           {mainImage && (
             <Image

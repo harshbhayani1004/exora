@@ -6,6 +6,24 @@ import { Check, Mail, MapPin, Phone, Send } from "lucide-react";
 export default function ContactPage() {
   const [formState, setFormState] = useState({ name: "", email: "", subject: "", message: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formState),
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+      setSubmitted(true);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-cream">
@@ -69,10 +87,7 @@ export default function ContactPage() {
               </div>
             ) : (
               <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  setSubmitted(true);
-                }}
+                onSubmit={handleSubmit}
                 className="space-y-6"
               >
                 <div>
@@ -95,8 +110,8 @@ export default function ContactPage() {
                     className="w-full rounded-2xl border border-dark/15 bg-white/55 px-4 py-3 text-sm outline-none transition-colors placeholder:text-dark/30 focus:border-coral"
                   />
                 </label>
-                <button type="submit" className="btn-primary w-full sm:w-auto">
-                  Send message <Send className="h-4 w-4" />
+                <button type="submit" disabled={isSubmitting} className="btn-primary w-full sm:w-auto disabled:opacity-50">
+                  {isSubmitting ? "Sending..." : "Send message"} <Send className="h-4 w-4" />
                 </button>
               </form>
             )}

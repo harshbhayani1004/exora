@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, LogOut } from "lucide-react";
+import Link from "next/link";
+import { User, LogOut, Package, ShieldCheck } from "lucide-react";
 import { logout } from "@/lib/auth";
 
 interface UserAvatarProps {
@@ -9,7 +10,7 @@ interface UserAvatarProps {
 }
 
 export default function UserAvatar({ onLoginClick }: UserAvatarProps) {
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; role?: string } | null>(null);
   const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
@@ -60,9 +61,27 @@ export default function UserAvatar({ onLoginClick }: UserAvatarProps) {
               <p className="font-serif text-lg font-semibold">{user.name}</p>
               <p className="truncate text-xs text-dark/55">{user.email}</p>
             </div>
+            <div className="py-1 border-b border-dark/10">
+              <Link
+                href="/account/orders"
+                onClick={() => setShowMenu(false)}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-cream"
+              >
+                <Package className="h-4 w-4 text-dark/60" /> My Orders
+              </Link>
+              {user.role === "ADMIN" && (
+                <Link
+                  href="/admin"
+                  onClick={() => setShowMenu(false)}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-coral hover:bg-coral/10"
+                >
+                  <ShieldCheck className="h-4 w-4 text-coral" /> Studio Admin
+                </Link>
+              )}
+            </div>
             <button
               onClick={handleLogout}
-              className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold hover:bg-cream"
+              className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50"
             >
               <LogOut className="h-4 w-4" /> Sign out
             </button>

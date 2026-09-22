@@ -110,9 +110,12 @@ export default function CartPage() {
                   {shipping > 0 && <p className="rounded-xl bg-white/7 p-3 text-xs leading-5 text-white/50">You are ${(100 - total).toFixed(2)} away from free shipping.</p>}
                   <div className="flex justify-between border-t border-white/15 pt-5 font-serif text-2xl"><span>Total</span><span>${orderTotal.toFixed(2)}</span></div>
                 </div>
-                <button className="mt-8 h-14 w-full rounded-full bg-coral text-xs font-bold uppercase tracking-[0.14em] transition-colors hover:bg-white hover:text-dark">
+                <Link
+                  href="/checkout"
+                  className="mt-8 flex h-14 w-full items-center justify-center rounded-full bg-coral text-xs font-bold uppercase tracking-[0.14em] transition-colors hover:bg-white hover:text-dark"
+                >
                   Continue to checkout
-                </button>
+                </Link>
                 <p className="mt-4 text-center text-[10px] uppercase tracking-wider text-white/35">Secure checkout · Carefully packed</p>
               </div>
             </aside>

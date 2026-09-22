@@ -1,138 +1,115 @@
-// Simple localStorage-based authentication (no backend)
-// For production, integrate with a real authentication service like Firebase, Auth0, or NextAuth
+// Production Authentication Client connected to /api/auth/* backend
 
 export interface User {
-  id: number;
+  id: string | number;
   email: string;
   name: string;
+  role?: string;
+  phone?: string | null;
 }
 
 export interface AuthResponse {
   success: boolean;
   user?: User;
   error?: string;
+  message?: string;
 }
 
-// Mock Google OAuth Sign In
+// Google OAuth Sign In (redirects to Google provider or displays notice)
 export async function signInWithGoogle(): Promise<AuthResponse> {
-  // In production, integrate with actual OAuth provider
   return {
     success: false,
-    error: "Google OAuth not configured. Please set up authentication service.",
+    error: "Google OAuth requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to be configured.",
   };
 }
 
-// Check if user is authenticated from localStorage
+// Check if user is authenticated from session endpoint or localStorage
 export async function checkSupabaseAuth(): Promise<User | null> {
-  if (typeof window === "undefined") return null;
-
-  const userJson = localStorage.getItem("user");
-  if (!userJson) return null;
-
-  try {
-    return JSON.parse(userJson);
-  } catch {
-    return null;
-  }
+  return getCurrentUser();
 }
 
-// Simple hash function (for demo only - use proper server-side hashing in production)
-async function simpleHash(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-// Register user (localStorage only)
+// Register user via backend API
 export async function registerUser(
   email: string,
   password: string,
   name: string,
 ): Promise<AuthResponse> {
-  if (typeof window === "undefined") {
-    return { success: false, error: "Not in browser environment" };
-  }
-
   try {
-    // Check if user already exists
-    const usersJson = localStorage.getItem("users");
-    const users = usersJson ? JSON.parse(usersJson) : [];
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, name }),
+    });
 
-    if (users.some((u: User) => u.email === email)) {
-      return { success: false, error: "Email already registered" };
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.error || "Registration failed" };
     }
 
-    // Create new user
-    const newUser: User = {
-      id: Date.now(),
-      email,
-      name,
-    };
+    if (typeof window !== "undefined" && data.user) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+    }
 
-    // Store hashed password separately (never store in user object)
-    const passwordHash = await simpleHash(password);
-    const passwords = JSON.parse(localStorage.getItem("passwords") || "{}");
-    passwords[email] = passwordHash;
-    localStorage.setItem("passwords", JSON.stringify(passwords));
-
-    // Store user
-    users.push(newUser);
-    localStorage.setItem("users", JSON.stringify(users));
-    localStorage.setItem("user", JSON.stringify(newUser));
-
-    return { success: true, user: newUser };
-  } catch (error) {
-    console.error("Registration error:", error);
-    return { success: false, error: "Registration failed" };
+    return { success: true, user: data.user };
+  } catch (error: any) {
+    console.error("Registration client error:", error);
+    return { success: false, error: error.message || "Registration failed" };
   }
 }
 
-// Login user (localStorage only)
+// Login user via backend API
 export async function loginUser(
   email: string,
   password: string,
 ): Promise<AuthResponse> {
-  if (typeof window === "undefined") {
-    return { success: false, error: "Not in browser environment" };
-  }
-
   try {
-    // Get users
-    const usersJson = localStorage.getItem("users");
-    const users: User[] = usersJson ? JSON.parse(usersJson) : [];
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-    const user = users.find((u) => u.email === email);
-    if (!user) {
-      return { success: false, error: "Invalid email or password" };
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.error || "Invalid email or password" };
     }
 
-    // Verify password
-    const passwordHash = await simpleHash(password);
-    const passwords = JSON.parse(localStorage.getItem("passwords") || "{}");
-
-    if (passwords[email] !== passwordHash) {
-      return { success: false, error: "Invalid email or password" };
+    if (typeof window !== "undefined" && data.user) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
     }
 
-    // Set current user
-    localStorage.setItem("user", JSON.stringify(user));
-
-    return { success: true, user };
-  } catch (error) {
-    console.error("Login error:", error);
-    return { success: false, error: "Login failed" };
+    return { success: true, user: data.user };
+  } catch (error: any) {
+    console.error("Login client error:", error);
+    return { success: false, error: error.message || "Login failed" };
   }
 }
 
-// Get current user
+// Get current user (verifies with backend session)
 export async function getCurrentUser(): Promise<User | null> {
   if (typeof window === "undefined") return null;
 
+  try {
+    const res = await fetch("/api/auth/me");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        return data.user;
+      }
+    }
+  } catch {
+    // Fall back to localStorage if offline/network error
+  }
+
   const userJson = localStorage.getItem("user");
   if (!userJson) return null;
-
   try {
     return JSON.parse(userJson);
   } catch {
@@ -142,56 +119,72 @@ export async function getCurrentUser(): Promise<User | null> {
 
 // Logout user
 export async function logout(): Promise<void> {
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } catch {
+    // Ignore error
+  }
+
   if (typeof window !== "undefined") {
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
   }
 }
 
-// Reset password (mock implementation)
+// Request password reset email
 export async function resetPassword(email: string): Promise<AuthResponse> {
-  // In production, send a password reset email via your auth service
-  return {
-    success: false,
-    error:
-      "Password reset not configured. Please set up authentication service.",
-  };
+  try {
+    const res = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+    return {
+      success: res.ok && data.success,
+      message: data.message || "Reset email instructions sent",
+      error: !res.ok ? data.error : undefined,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Failed to send password reset email",
+    };
+  }
 }
 
-// Update password (mock implementation for reset flow)
-export async function updatePassword(password: string): Promise<AuthResponse> {
-    if (typeof window === "undefined") {
-        return { success: false, error: "Not in browser environment" };
+// Update password using reset token
+export async function updatePassword(password: string, token?: string): Promise<AuthResponse> {
+  try {
+    // If no token passed, try to extract from window.location.hash
+    let recoveryToken = token;
+    if (!recoveryToken && typeof window !== "undefined") {
+      const hash = window.location.hash;
+      if (hash) {
+        const params = new URLSearchParams(hash.slice(1));
+        recoveryToken = params.get("access_token") || undefined;
+      }
     }
 
-    try {
-        // In a real app, this would use the session established by the reset token
-        // For this mock, we'll just update the current user if logged in, 
-        // or return a success message if we're just simulating the flow.
-        
-        // Let's try to update the current user if one exists
-        const userJson = localStorage.getItem("user");
-        if (userJson) {
-            const user = JSON.parse(userJson);
-            const passwordHash = await simpleHash(password);
-            const passwords = JSON.parse(localStorage.getItem("passwords") || "{}");
-            passwords[user.email] = passwordHash;
-            localStorage.setItem("passwords", JSON.stringify(passwords));
-            return { success: true };
-        }
+    const res = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, token: recoveryToken }),
+    });
 
-        // If no user is logged in (which is effectively true for the reset flow until token exchange),
-        // we can just return success to simulate the "flow" working for the UI demo.
-        // However, since we can't actually identify WHICH user to update without a real backend token verification,
-        // we'll just return a success mock.
-        return { success: true }; 
-
-    } catch (error) {
-        console.error("Update password error:", error);
-        return { success: false, error: "Failed to update password" };
-    }
+    const data = await res.json();
+    return {
+      success: res.ok && data.success,
+      message: data.message,
+      error: !res.ok ? data.error : undefined,
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to update password" };
+  }
 }
 
-// Generate session token (for compatibility)
+// Generate session token (compatibility utility)
 export function generateSessionToken(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(32)))
     .map((b) => b.toString(16).padStart(2, "0"))
