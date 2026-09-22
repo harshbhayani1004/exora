@@ -134,6 +134,15 @@ async function main() {
   }
   console.log(`✅ Seeded ${productCount} products with images and category links.`);
 
+  // 5. Synchronize PostgreSQL serial sequences to prevent ID collision
+  try {
+    await prisma.$executeRawUnsafe(`SELECT setval(pg_get_serial_sequence('"Product"', 'id'), coalesce(max(id)+1, 1), false) FROM "Product";`);
+    await prisma.$executeRawUnsafe(`SELECT setval(pg_get_serial_sequence('"Category"', 'id'), coalesce(max(id)+1, 1), false) FROM "Category";`);
+    console.log("✅ PostgreSQL ID sequences synchronized.");
+  } catch (seqError) {
+    console.warn("Notice: Sequence sync skipped or not needed:", seqError);
+  }
+
   console.log("✨ EXORA database seeding complete!");
 }
 
