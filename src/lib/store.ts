@@ -124,6 +124,14 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: "cart-storage",
+      skipHydration: true,
     },
   ),
 );
+
+// Call this in a top-level client layout to rehydrate cart from localStorage after mount
+export function useHydrateCart() {
+  if (typeof window !== "undefined") {
+    useCartStore.persist.rehydrate();
+  }
+}

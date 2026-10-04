@@ -37,7 +37,7 @@ export default function NewsletterForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 flex items-center border-b border-white/35 pb-2">
+    <form onSubmit={handleSubmit} className="mt-6 flex items-center border-b border-white/35 pb-2" suppressHydrationWarning>
       <label htmlFor="newsletter-email" className="sr-only">
         Email address
       </label>

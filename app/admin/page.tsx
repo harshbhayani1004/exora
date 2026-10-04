@@ -3,338 +3,322 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Package,
   DollarSign,
-  CheckCircle,
+  Package,
   Flower2,
+  Users,
+  TrendingUp,
+  ArrowUpRight,
+  AlertCircle,
+  Clock,
+  PlusCircle,
+  Mail,
+  CheckCircle,
   RefreshCw,
-  LogOut,
 } from "lucide-react";
-import { getCurrentUser, loginUser, logout, type User } from "@/lib/auth";
+import { adminFetch } from "@/lib/admin-api";
 
-export default function AdminPage() {
-  const [user, setUser] = useState<User | null>(null);
+export default function AdminDashboardPage() {
+  const [stats, setStats] = useState<any>(null);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [inquiries, setInquiries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Login form state for admin
-  const [adminEmail, setAdminEmail] = useState("admin@exora.in");
-  const [adminPassword, setAdminPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  // Admin Data State
-  const [stats, setStats] = useState<any>(null);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [isUpdating, setIsUpdating] = useState(false);
-
-  const fetchAdminData = async () => {
+  const loadDashboardData = async () => {
+    setLoading(true);
     try {
-      const [statsRes, ordersRes] = await Promise.all([
-        fetch("/api/admin/stats"),
-        fetch(`/api/admin/orders${statusFilter !== "ALL" ? `?status=${statusFilter}` : ""}`),
+      const [statsRes, ordersRes, productsRes, inquiriesRes] = await Promise.all([
+        adminFetch("/api/admin/stats"),
+        adminFetch("/api/admin/orders?limit=6"),
+        adminFetch("/api/products?limit=100"),
+        adminFetch("/api/admin/inquiries"),
       ]);
 
       if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        if (statsData.success) setStats(statsData.stats);
+        const d = await statsRes.json();
+        if (d.success) setStats(d.stats);
       }
-
       if (ordersRes.ok) {
-        const ordersData = await ordersRes.json();
-        if (ordersData.success) setOrders(ordersData.orders);
+        const d = await ordersRes.json();
+        if (d.success) setRecentOrders(d.orders || []);
+      }
+      if (productsRes.ok) {
+        const d = await productsRes.json();
+        if (d.success) setProducts(d.products || []);
+      }
+      if (inquiriesRes.ok) {
+        const d = await inquiriesRes.json();
+        if (d.success) setInquiries(d.inquiries || []);
       }
     } catch (err) {
-      console.error("Admin data fetch error:", err);
+      console.error("Dashboard data load error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    getCurrentUser().then((u) => {
-      setUser(u);
-      setLoading(false);
-      if (u && u.role === "ADMIN") {
-        fetchAdminData();
-      }
-    });
-  }, [statusFilter]);
+    loadDashboardData();
+  }, []);
 
-  const handleAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError("");
-    setIsLoggingIn(true);
-
-    const res = await loginUser(adminEmail, adminPassword);
-    setIsLoggingIn(false);
-
-    if (!res.success || !res.user) {
-      setLoginError(res.error || "Login failed");
-      return;
-    }
-
-    if (res.user.role !== "ADMIN") {
-      setLoginError("This account does not have Studio Admin privileges.");
-      return;
-    }
-
-    setUser(res.user);
-    fetchAdminData();
-  };
-
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
-    setIsUpdating(true);
-    try {
-      const res = await fetch(`/api/admin/orders/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (res.ok) {
-        fetchAdminData();
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <p className="font-serif text-xl text-dark/60">Loading Studio Admin...</p>
-      </div>
-    );
-  }
-
-  // Not logged in as admin
-  if (!user || user.role !== "ADMIN") {
-    return (
-      <div className="min-h-screen bg-cream flex items-center justify-center p-4">
-        <div className="soft-card w-full max-w-md p-8 md:p-10">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-coral text-white mx-auto mb-4">
-            ✦
-          </div>
-          <p className="eyebrow text-coral text-center">Studio Portal</p>
-          <h1 className="font-serif text-3xl text-center mt-1">Admin Sign In</h1>
-          <p className="text-xs text-dark/50 text-center mt-2">
-            Default seed admin: <code className="bg-dark/10 px-1 py-0.5 rounded">admin@exora.in</code>
-          </p>
-
-          <form onSubmit={handleAdminLogin} className="mt-6 space-y-4">
-            {loginError && (
-              <div className="rounded-xl bg-red-100 p-3 text-xs text-red-800">
-                {loginError}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-bold uppercase text-dark/50 mb-1">Email</label>
-              <input
-                type="email"
-                required
-                value={adminEmail}
-                onChange={(e) => setAdminEmail(e.target.value)}
-                className="w-full h-12 rounded-xl border border-dark/15 bg-white px-4 text-sm outline-none focus:border-coral"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase text-dark/50 mb-1">Password</label>
-              <input
-                type="password"
-                required
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                placeholder="ExoraStudio2026!"
-                className="w-full h-12 rounded-xl border border-dark/15 bg-white px-4 text-sm outline-none focus:border-coral"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoggingIn}
-              className="btn-primary w-full py-3.5 text-xs font-bold uppercase tracking-wider"
-            >
-              {isLoggingIn ? "Signing In..." : "Sign In to Studio"}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <Link href="/" className="text-xs text-dark/50 hover:text-coral">
-              ← Return to storefront
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const lowStockProducts = products.filter((p) => p.stock_quantity < 10 || p.stock_status === "outofstock");
+  const unreadInquiries = inquiries.filter((i) => i.status === "UNREAD");
 
   return (
-    <div className="min-h-screen bg-[#f3efe6] py-10">
-      <div className="site-container">
-        {/* Admin Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-dark/10 pb-6 mb-8">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-coral text-white text-xs">
-                ✦
-              </span>
-              <h1 className="font-serif text-3xl font-bold">EXORA Studio Admin</h1>
-            </div>
-            <p className="text-xs text-dark/50 mt-1">
-              Logged in as <span className="font-bold text-dark">{user.email}</span>
-            </p>
+    <div className="space-y-8 animate-fade-in">
+      {/* Welcome Banner */}
+      <div className="rounded-3xl bg-white p-6 sm:p-8 shadow-sm border border-dark/5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-coral bg-coral/10 px-2.5 py-0.5 rounded-full">
+              Studio Portal Overview
+            </span>
+            <span className="text-xs text-dark/40 font-mono">
+              {new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            </span>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={fetchAdminData}
-              className="flex items-center gap-1.5 rounded-full border border-dark/15 bg-white px-4 py-2 text-xs font-bold uppercase hover:bg-cream"
-            >
-              <RefreshCw className="h-3.5 w-3.5" /> Refresh
-            </button>
-            <button
-              onClick={() => logout().then(() => window.location.reload())}
-              className="flex items-center gap-1.5 rounded-full border border-dark/15 bg-white px-4 py-2 text-xs font-bold uppercase hover:bg-red-50 hover:text-red-700"
-            >
-              <LogOut className="h-3.5 w-3.5" /> Sign out
-            </button>
-          </div>
+          <h1 className="font-serif text-3xl sm:text-4xl font-bold mt-2 tracking-tight text-dark">
+            Studio Performance & Hub
+          </h1>
+          <p className="text-xs sm:text-sm text-dark/60 mt-1 max-w-xl">
+            Real-time telemetry on orders, flower inventory, customer engagement, and sales transactions.
+          </p>
         </div>
 
-        {/* Metrics Grid */}
-        {stats && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-            <div className="rounded-2xl bg-white p-6 shadow-sm border border-dark/5">
-              <div className="flex items-center justify-between text-dark/40 mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider">Revenue</span>
-                <DollarSign className="h-5 w-5 text-coral" />
-              </div>
-              <p className="font-serif text-3xl font-bold">${stats.totalRevenue.toFixed(2)}</p>
-              <p className="text-xs text-dark/40 mt-1">Completed & delivered</p>
-            </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadDashboardData}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-xl border border-dark/15 bg-cream/50 px-4 py-2 text-xs font-bold text-dark hover:bg-white transition"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-coral" : ""}`} />
+            <span>Sync Stats</span>
+          </button>
+          <Link
+            href="/admin/products/new"
+            className="flex items-center gap-2 rounded-xl bg-dark text-white px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-coral transition shadow-sm"
+          >
+            <PlusCircle className="h-4 w-4" /> Add Arrangement
+          </Link>
+        </div>
+      </div>
 
-            <div className="rounded-2xl bg-white p-6 shadow-sm border border-dark/5">
-              <div className="flex items-center justify-between text-dark/40 mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider">Orders</span>
-                <Package className="h-5 w-5 text-butter" />
-              </div>
-              <p className="font-serif text-3xl font-bold">{stats.totalOrders}</p>
-              <p className="text-xs text-dark/40 mt-1">{stats.pendingOrders} awaiting fulfillment</p>
-            </div>
-
-            <div className="rounded-2xl bg-white p-6 shadow-sm border border-dark/5">
-              <div className="flex items-center justify-between text-dark/40 mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider">Arrangements</span>
-                <Flower2 className="h-5 w-5 text-sage" />
-              </div>
-              <p className="font-serif text-3xl font-bold">{stats.totalProducts}</p>
-              <p className="text-xs text-dark/40 mt-1">Catalog items</p>
-            </div>
-
-            <div className="rounded-2xl bg-white p-6 shadow-sm border border-dark/5">
-              <div className="flex items-center justify-between text-dark/40 mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider">Subscribers</span>
-                <CheckCircle className="h-5 w-5 text-tan" />
-              </div>
-              <p className="font-serif text-3xl font-bold">{stats.subscribersCount}</p>
-              <p className="text-xs text-dark/40 mt-1">{stats.unreadInquiries} unread inquiries</p>
+      {/* KPI Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Revenue */}
+        <div className="rounded-3xl bg-white p-6 shadow-sm border border-dark/5 relative overflow-hidden group hover:shadow-md transition">
+          <div className="flex items-center justify-between text-dark/40 mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider">Gross Revenue</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <DollarSign className="h-5 w-5" />
             </div>
           </div>
-        )}
+          <p className="font-serif text-3xl font-bold tracking-tight text-dark">
+            ₹{stats?.totalRevenue?.toLocaleString("en-IN") || "0"}
+          </p>
+          <p className="text-xs text-dark/50 mt-2 flex items-center gap-1">
+            <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> Settled across all payment gateways
+          </p>
+        </div>
 
-        {/* Orders Table Container */}
-        <div className="rounded-3xl bg-white p-6 md:p-8 shadow-sm border border-dark/5">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-dark/10 pb-5 mb-6">
-            <h2 className="font-serif text-2xl font-bold">Studio Orders ({orders.length})</h2>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-dark/50 uppercase font-bold">Status:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-xl border border-dark/15 bg-cream px-3 py-1.5 text-xs font-semibold outline-none"
-              >
-                <option value="ALL">All Orders</option>
-                <option value="PENDING">Pending</option>
-                <option value="PROCESSING">Processing</option>
-                <option value="SHIPPED">Shipped</option>
-                <option value="DELIVERED">Delivered</option>
-                <option value="CANCELLED">Cancelled</option>
-              </select>
+        {/* Orders */}
+        <div className="rounded-3xl bg-white p-6 shadow-sm border border-dark/5 relative overflow-hidden group hover:shadow-md transition">
+          <div className="flex items-center justify-between text-dark/40 mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider">Total Orders</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+              <Package className="h-5 w-5" />
             </div>
           </div>
+          <p className="font-serif text-3xl font-bold tracking-tight text-dark">
+            {stats?.totalOrders ?? recentOrders.length}
+          </p>
+          <p className="text-xs text-dark/50 mt-2">
+            <span className="font-bold text-amber-600">{stats?.pendingOrders || 0}</span> orders awaiting fulfillment
+          </p>
+        </div>
 
-          {orders.length === 0 ? (
-            <p className="py-12 text-center text-dark/40 font-serif text-lg">No orders matching this filter.</p>
+        {/* Catalog */}
+        <div className="rounded-3xl bg-white p-6 shadow-sm border border-dark/5 relative overflow-hidden group hover:shadow-md transition">
+          <div className="flex items-center justify-between text-dark/40 mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider">Active Catalog</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-coral">
+              <Flower2 className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="font-serif text-3xl font-bold tracking-tight text-dark">
+            {stats?.totalProducts ?? products.length}
+          </p>
+          <p className="text-xs text-dark/50 mt-2">
+            Handmade floral arrangements in PostgreSQL
+          </p>
+        </div>
+
+        {/* Inquiries */}
+        <div className="rounded-3xl bg-white p-6 shadow-sm border border-dark/5 relative overflow-hidden group hover:shadow-md transition">
+          <div className="flex items-center justify-between text-dark/40 mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider">Customer Messages</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <Mail className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="font-serif text-3xl font-bold tracking-tight text-dark">
+            {inquiries.length}
+          </p>
+          <p className="text-xs text-dark/50 mt-2">
+            <span className="font-bold text-coral">{unreadInquiries.length}</span> unread messages in inbox
+          </p>
+        </div>
+      </div>
+
+      {/* Main Grid: Orders & Side Widgets */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Recent Orders Table */}
+        <div className="lg:col-span-2 rounded-3xl bg-white p-6 sm:p-7 shadow-sm border border-dark/5">
+          <div className="flex items-center justify-between border-b border-dark/10 pb-4 mb-4">
+            <div>
+              <h2 className="font-serif text-xl font-bold text-dark">Recent Customer Orders</h2>
+              <p className="text-xs text-dark/50">Latest incoming purchases and checkout activity.</p>
+            </div>
+            <Link
+              href="/admin/orders"
+              className="text-xs font-bold text-coral hover:underline flex items-center gap-1"
+            >
+              All Orders ({stats?.totalOrders || recentOrders.length}) <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          {recentOrders.length === 0 ? (
+            <div className="py-14 text-center text-dark/40">
+              <Package className="h-12 w-12 mx-auto text-dark/20 mb-2" />
+              <p className="font-serif text-lg">No orders recorded yet.</p>
+              <p className="text-xs mt-1">Purchases created on the storefront will appear here live.</p>
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-dark/10 text-[10px] font-bold uppercase tracking-wider text-dark/40">
-                    <th className="pb-3">Order #</th>
-                    <th className="pb-3">Customer</th>
-                    <th className="pb-3">Items</th>
-                    <th className="pb-3">Total</th>
-                    <th className="pb-3">Gateway</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-dark/5">
-                  {orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-cream/40">
-                      <td className="py-4 font-serif font-bold">{order.orderNumber}</td>
-                      <td className="py-4">
-                        <p className="font-semibold">{order.customerName}</p>
-                        <p className="text-xs text-dark/50">{order.customerEmail}</p>
-                      </td>
-                      <td className="py-4 text-xs text-dark/70 max-w-xs truncate">
-                        {order.items?.map((i: any) => `${i.quantity}x ${i.productName}`).join(", ") || "None"}
-                      </td>
-                      <td className="py-4 font-serif font-bold">${order.total.toFixed(2)}</td>
-                      <td className="py-4">
-                        <span className="rounded-full bg-cream px-2.5 py-1 text-[10px] font-bold uppercase">
-                          {order.paymentGateway}
-                        </span>
-                      </td>
-                      <td className="py-4">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
-                            order.status === "DELIVERED"
-                              ? "bg-green-100 text-green-800"
-                              : order.status === "SHIPPED"
-                              ? "bg-blue-100 text-blue-800"
-                              : order.status === "PROCESSING"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-coral/10 text-coral"
-                          }`}
-                        >
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="py-4 text-right">
-                        <select
-                          disabled={isUpdating}
-                          value={order.status}
-                          onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                          className="rounded-lg border border-dark/15 bg-white px-2 py-1 text-xs outline-none"
-                        >
-                          <option value="PENDING">Pending</option>
-                          <option value="PROCESSING">Processing</option>
-                          <option value="SHIPPED">Shipped</option>
-                          <option value="DELIVERED">Delivered</option>
-                          <option value="CANCELLED">Cancelled</option>
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="divide-y divide-dark/5">
+              {recentOrders.map((order) => (
+                <div key={order.id} className="py-3.5 flex items-center justify-between gap-4 hover:bg-cream/30 px-2 rounded-xl transition">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/admin/orders/${order.id}`}
+                        className="font-serif font-bold text-sm text-dark hover:text-coral transition"
+                      >
+                        {order.orderNumber}
+                      </Link>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
+                          order.status === "DELIVERED"
+                            ? "bg-green-100 text-green-800"
+                            : order.status === "SHIPPED"
+                            ? "bg-blue-100 text-blue-800"
+                            : order.status === "PROCESSING"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-coral/10 text-coral"
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-dark/60 mt-0.5 truncate">
+                      {order.customerName} • {order.items?.length || 0} items ({order.paymentGateway})
+                    </p>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <p className="font-serif font-bold text-sm">₹{order.total?.toFixed(2)}</p>
+                    <Link
+                      href={`/admin/orders/${order.id}`}
+                      className="text-[10px] font-semibold text-coral hover:underline flex items-center justify-end gap-0.5 mt-0.5"
+                    >
+                      Inspect <ArrowUpRight className="h-2.5 w-2.5" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
+        </div>
+
+        {/* Side Stack: Inventory & Quick Links */}
+        <div className="space-y-6">
+          {/* Inventory Health */}
+          <div className="rounded-3xl bg-white p-6 shadow-sm border border-dark/5">
+            <h3 className="font-serif text-lg font-bold mb-1 text-dark">Inventory Health</h3>
+            <p className="text-xs text-dark/50 mb-4">Stock level monitors & alerts.</p>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-cream/60">
+                <span className="font-semibold text-dark/80">In Stock Catalog Items</span>
+                <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                  {products.filter((p) => p.stock_status === "instock").length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-cream/60">
+                <span className="font-semibold text-dark/80">Featured Arrangements</span>
+                <span className="font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md">
+                  {products.filter((p) => p.featured).length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-cream/60">
+                <span className="font-semibold text-dark/80">Active Sale Promos</span>
+                <span className="font-bold text-dark bg-dark/10 px-2 py-0.5 rounded-md">
+                  {products.filter((p) => p.on_sale).length}
+                </span>
+              </div>
+            </div>
+
+            {lowStockProducts.length > 0 && (
+              <div className="mt-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">{lowStockProducts.length} items low or out of stock</p>
+                  <Link href="/admin/products" className="text-amber-800 underline font-semibold mt-0.5 block">
+                    Review inventory & restock →
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Hub Navigation */}
+          <div className="rounded-3xl bg-dark text-white p-6 shadow-md space-y-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-coral">Quick Directory</p>
+              <h4 className="font-serif text-lg font-bold mt-0.5">Management Hubs</h4>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <Link
+                href="/admin/products"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition font-semibold"
+              >
+                <span>Bloom Catalog Table</span>
+                <ArrowUpRight className="h-3.5 w-3.5 text-coral" />
+              </Link>
+              <Link
+                href="/admin/categories"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition font-semibold"
+              >
+                <span>Collections & Groups</span>
+                <ArrowUpRight className="h-3.5 w-3.5 text-coral" />
+              </Link>
+              <Link
+                href="/admin/customers"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition font-semibold"
+              >
+                <span>Customer Directory</span>
+                <ArrowUpRight className="h-3.5 w-3.5 text-coral" />
+              </Link>
+              <Link
+                href="/admin/inquiries"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition font-semibold"
+              >
+                <span>Messages & Inquiries</span>
+                <ArrowUpRight className="h-3.5 w-3.5 text-coral" />
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

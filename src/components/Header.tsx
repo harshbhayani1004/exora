@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Menu, X, ArrowUpRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import CartButton from "./CartButton";
 import UserAvatar from "./UserAvatar";
+import { useHydrateCart } from "@/lib/store";
+
 
 const AuthModal = dynamic(() => import("./AuthModal"), {
   ssr: false,
@@ -25,6 +27,10 @@ export default function Header() {
   const pathname = usePathname();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    useHydrateCart();
+  }, []);
 
   return (
     <>

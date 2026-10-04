@@ -115,6 +115,7 @@ export default function Footer() {
           <p>© {new Date().getFullYear()} Exora</p>
           <p className="hidden sm:block">Handmade with patience in Surat</p>
           <div className="flex gap-4 md:gap-7">
+            <Link href="/admin" className="hover:text-butter transition">Studio Portal</Link>
             <a href="#" className="hover:text-white">Privacy</a>
             <a href="#" className="hover:text-white">Terms</a>
           </div>
